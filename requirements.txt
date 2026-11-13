@@ -5,3 +5,7 @@ jupyterlab
 ipykernel
 openpyxl
 matplotlib
+SQLAlchemy
+psycopg[binary]
+python-dotenv
+streamlit

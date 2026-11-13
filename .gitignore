@@ -26,3 +26,8 @@ data/processed/*
 
 data/rejected/*
 !data/rejected/.gitkeep
+
+
+.env
+.env.*
+!.env.example
