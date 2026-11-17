@@ -65,23 +65,6 @@ def get_engine():
         pool_pre_ping=True,
         connect_args={"connect_timeout": 10},
     )
-
-    # Temporary database identity check
-    with engine.connect() as connection:
-        result = connection.execute(
-            text("""
-                SELECT
-                    current_user AS database_user,
-                    session_user AS session_user,
-                    current_database() AS database_name
-            """)
-        ).mappings().one()
-
-        st.write(
-            "Database connection audit:",
-            dict(result)
-        )
-
     return engine
 # ==================================================
 # 3. LOAD CUSTOMER AND PRODUCT DATA

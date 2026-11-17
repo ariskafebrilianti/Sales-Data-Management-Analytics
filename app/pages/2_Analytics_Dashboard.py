@@ -26,22 +26,62 @@ st.set_page_config(
 )
 
 
+
 # ==================================================
 # 2. DATABASE CONNECTION
 # ==================================================
 
+def get_setting(name, default=None):
+    """Read configuration from Streamlit secrets or environment variables."""
+
+    try:
+        value = st.secrets.get(name)
+    except (FileNotFoundError, AttributeError):
+        value = None
+
+    if value is None or value == "":
+        value = os.getenv(name, default)
+
+    return value
+
+
+APP_MODE = get_setting("APP_MODE", "local").lower()
+
+
 @st.cache_resource
 def get_engine():
 
-    required_vars = [
-        "DB_HOST",
-        "DB_USER",
-        "DB_PASSWORD",
-    ]
+    if APP_MODE == "public":
+        required_vars = [
+            "DB_READER_HOST",
+            "DB_READER_USER",
+            "DB_READER_PASSWORD",
+        ]
+
+        db_config = {
+            "host": get_setting("DB_READER_HOST"),
+            "user": get_setting("DB_READER_USER"),
+            "password": get_setting("DB_READER_PASSWORD"),
+            "port": get_setting("DB_READER_PORT", "5432"),
+        }
+
+    else:
+        required_vars = [
+            "DB_HOST",
+            "DB_USER",
+            "DB_PASSWORD",
+        ]
+
+        db_config = {
+            "host": get_setting("DB_HOST"),
+            "user": get_setting("DB_USER"),
+            "password": get_setting("DB_PASSWORD"),
+            "port": get_setting("DB_PORT", "5432"),
+        }
 
     missing_vars = [
         var for var in required_vars
-        if not os.getenv(var)
+        if not get_setting(var)
     ]
 
     if missing_vars:
@@ -51,11 +91,11 @@ def get_engine():
 
     connection_url = URL.create(
         drivername="postgresql+psycopg",
-        username=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=int(os.getenv("DB_PORT", "5432")),
-        database=os.getenv("DB_NAME", "postgres"),
+        username=db_config["user"],
+        password=db_config["password"],
+        host=db_config["host"],
+        port=int(db_config["port"]),
+        database=get_setting("DB_NAME", "postgres"),
         query={"sslmode": "require"},
     )
 
@@ -64,7 +104,6 @@ def get_engine():
         pool_pre_ping=True,
         connect_args={"connect_timeout": 10},
     )
-
 
 
 # ==================================================
