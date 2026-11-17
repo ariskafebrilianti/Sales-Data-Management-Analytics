@@ -66,8 +66,9 @@ def get_engine():
     )
 
 
+
 # ==================================================
-# 3. LOAD ANALYTICAL DATA
+# 3. LOAD TRANSACTION ANALYTICS DATA
 # ==================================================
 
 @st.cache_data(ttl=300)
@@ -75,71 +76,21 @@ def load_dashboard_data():
 
     engine = get_engine()
 
-    queries = {
-        "kpi": """
-            SELECT *
-            FROM public.vw_sales_kpis;
-        """,
-
-        "monthly": """
-            SELECT *
-            FROM public.vw_monthly_sales
-            ORDER BY month_start;
-        """,
-
-        "products": """
-            SELECT *
-            FROM public.vw_product_performance
-            ORDER BY total_sales DESC;
-        """,
-
-        "customers": """
-            SELECT *
-            FROM public.vw_customer_performance
-            ORDER BY total_sales DESC;
-        """,
-
-        "geography": """
-            SELECT
-                country,
-                COUNT(DISTINCT city) AS total_cities,
-                SUM(unique_customers) AS unique_customers,
-                SUM(total_transactions) AS total_transactions,
-                SUM(total_sales) AS total_sales,
-                SUM(total_profit_loss) AS total_profit_loss
-            FROM public.vw_geographic_sales
-            GROUP BY country
-            ORDER BY total_sales DESC;
-        """,
-
-        "deal_size": """
-            SELECT *
-            FROM public.vw_deal_size_performance
-            ORDER BY
-                CASE deal_size
-                    WHEN 'Large' THEN 1
-                    WHEN 'Medium' THEN 2
-                    WHEN 'Small' THEN 3
-                END;
-        """,
-    }
-
-    data = {}
+    query = """
+        SELECT *
+        FROM public.vw_transaction_analytics
+        ORDER BY order_date, transaction_id;
+    """
 
     with engine.connect() as connection:
 
-        for key, query in queries.items():
+        result = connection.execute(
+            text(query)
+        ).mappings().all()
 
-            result = connection.execute(
-                text(query)
-            ).mappings().all()
-
-            data[key] = pd.DataFrame(
-                [dict(row) for row in result]
-            )
-
-    return data
-
+    return pd.DataFrame(
+        [dict(row) for row in result]
+    )
 
 # ==================================================
 # 4. HELPER FUNCTIONS
@@ -183,7 +134,7 @@ with refresh_col:
 
     if st.button(
         "Refresh Dashboard",
-        use_container_width=True,
+        width="stretch",
     ):
 
         load_dashboard_data.clear()
@@ -196,92 +147,347 @@ with info_col:
         "Use Refresh Dashboard to retrieve the latest data."
     )
 
-
 # ==================================================
 # 6. LOAD DATA
 # ==================================================
 
 try:
 
-    dashboard_data = load_dashboard_data()
+    transaction_df = load_dashboard_data()
 
-    kpi_df = dashboard_data["kpi"]
-    monthly_df = dashboard_data["monthly"]
-    products_df = dashboard_data["products"]
-    customers_df = dashboard_data["customers"]
-    geography_df = dashboard_data["geography"]
-    deal_size_df = dashboard_data["deal_size"]
-
-    if kpi_df.empty:
-        st.warning("No KPI data available.")
+    if transaction_df.empty:
+        st.warning("No transaction data available.")
         st.stop()
 
-    kpi = kpi_df.iloc[0]
+    transaction_df["order_date"] = pd.to_datetime(
+        transaction_df["order_date"]
+    )
+
+    transaction_df["month_start"] = pd.to_datetime(
+        transaction_df["month_start"]
+    )
 
 except Exception as error:
 
-    st.error("Unable to load dashboard data.")
+    st.error("Unable to load transaction analytics data.")
     st.code(str(error))
     st.stop()
 
 
 # ==================================================
-# 7. EXECUTIVE KPI CARDS
+# 7. GLOBAL DASHBOARD FILTERS
+# ==================================================
+
+st.divider()
+st.subheader("Dashboard Filters")
+
+# Available date range
+min_order_date = transaction_df["order_date"].min().date()
+max_order_date = transaction_df["order_date"].max().date()
+
+# Filter options
+year_options = sorted(
+    transaction_df["order_year"].dropna().unique().tolist(),
+    reverse=True,
+)
+
+quarter_options = sorted(
+    transaction_df["order_quarter"].dropna().unique().tolist()
+)
+
+month_options = (
+    transaction_df[["order_month", "month_name"]]
+    .drop_duplicates()
+    .sort_values("order_month")["month_name"]
+    .tolist()
+)
+
+category_options = sorted(
+    transaction_df["product_category"].dropna().unique().tolist()
+)
+
+product_options = sorted(
+    transaction_df["product_code"].dropna().unique().tolist()
+)
+
+customer_options = sorted(
+    transaction_df["customer_name"].dropna().unique().tolist()
+)
+
+country_options = sorted(
+    transaction_df["country"].dropna().unique().tolist()
+)
+
+city_options = sorted(
+    transaction_df["city"].dropna().unique().tolist()
+)
+
+deal_size_options = sorted(
+    transaction_df["deal_size"].dropna().unique().tolist()
+)
+
+status_options = sorted(
+    transaction_df["status"].dropna().unique().tolist()
+)
+
+
+# Reset filter callback
+def reset_dashboard_filters():
+
+    st.session_state["filter_year"] = []
+    st.session_state["filter_quarter"] = []
+    st.session_state["filter_month"] = []
+    st.session_state["filter_date_range"] = (
+        min_order_date,
+        max_order_date,
+    )
+    st.session_state["filter_category"] = []
+    st.session_state["filter_product"] = []
+    st.session_state["filter_customer"] = []
+    st.session_state["filter_country"] = []
+    st.session_state["filter_city"] = []
+    st.session_state["filter_deal_size"] = []
+    st.session_state["filter_status"] = []
+
+
+with st.expander("Filter Options", expanded=True):
+
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
+
+    with filter_col1:
+
+        selected_years = st.multiselect(
+            "Year",
+            options=year_options,
+            key="filter_year",
+        )
+
+        selected_quarters = st.multiselect(
+            "Quarter",
+            options=quarter_options,
+            format_func=lambda x: f"Q{x}",
+            key="filter_quarter",
+        )
+
+        selected_months = st.multiselect(
+            "Month",
+            options=month_options,
+            key="filter_month",
+        )
+
+        selected_date_range = st.date_input(
+            "Date Range",
+            value=(min_order_date, max_order_date),
+            min_value=min_order_date,
+            max_value=max_order_date,
+            key="filter_date_range",
+        )
+
+    with filter_col2:
+
+        selected_categories = st.multiselect(
+            "Product Category",
+            options=category_options,
+            key="filter_category",
+        )
+
+        selected_products = st.multiselect(
+            "Product Code",
+            options=product_options,
+            key="filter_product",
+        )
+
+        selected_customers = st.multiselect(
+            "Customer",
+            options=customer_options,
+            key="filter_customer",
+        )
+
+    with filter_col3:
+
+        selected_countries = st.multiselect(
+            "Country",
+            options=country_options,
+            key="filter_country",
+        )
+
+        selected_cities = st.multiselect(
+            "City",
+            options=city_options,
+            key="filter_city",
+        )
+
+        selected_deal_sizes = st.multiselect(
+            "Deal Size",
+            options=deal_size_options,
+            key="filter_deal_size",
+        )
+
+        selected_statuses = st.multiselect(
+            "Status",
+            options=status_options,
+            key="filter_status",
+        )
+
+    st.button(
+        "Reset Filters",
+        on_click=reset_dashboard_filters,
+        width="stretch",
+    )
+
+
+# ==================================================
+# 8. APPLY GLOBAL FILTERS
+# ==================================================
+
+filtered_df = transaction_df.copy()
+
+if selected_years:
+    filtered_df = filtered_df[
+        filtered_df["order_year"].isin(selected_years)
+    ]
+
+if selected_quarters:
+    filtered_df = filtered_df[
+        filtered_df["order_quarter"].isin(selected_quarters)
+    ]
+
+if selected_months:
+    filtered_df = filtered_df[
+        filtered_df["month_name"].isin(selected_months)
+    ]
+
+if selected_date_range and len(selected_date_range) == 2:
+
+    start_date, end_date = selected_date_range
+
+    filtered_df = filtered_df[
+        filtered_df["order_date"].dt.date.between(
+            start_date,
+            end_date,
+        )
+    ]
+
+if selected_categories:
+    filtered_df = filtered_df[
+        filtered_df["product_category"].isin(selected_categories)
+    ]
+
+if selected_products:
+    filtered_df = filtered_df[
+        filtered_df["product_code"].isin(selected_products)
+    ]
+
+if selected_customers:
+    filtered_df = filtered_df[
+        filtered_df["customer_name"].isin(selected_customers)
+    ]
+
+if selected_countries:
+    filtered_df = filtered_df[
+        filtered_df["country"].isin(selected_countries)
+    ]
+
+if selected_cities:
+    filtered_df = filtered_df[
+        filtered_df["city"].isin(selected_cities)
+    ]
+
+if selected_deal_sizes:
+    filtered_df = filtered_df[
+        filtered_df["deal_size"].isin(selected_deal_sizes)
+    ]
+
+if selected_statuses:
+    filtered_df = filtered_df[
+        filtered_df["status"].isin(selected_statuses)
+    ]
+
+
+# Filter summary
+st.caption(
+    f"Showing {len(filtered_df):,} of "
+    f"{len(transaction_df):,} transactions"
+)
+
+if filtered_df.empty:
+    st.warning(
+        "No transactions match the selected filters. "
+        "Please adjust or reset your filters."
+    )
+    st.stop()
+
+# ==================================================
+# 9. EXECUTIVE KPI CARDS
 # ==================================================
 
 st.divider()
 st.subheader("Executive Overview")
+
+total_sales = filtered_df["sales"].sum()
+total_profit = filtered_df["total_profit_loss"].sum()
+
+profit_margin = (
+    (total_profit / total_sales) * 100
+    if total_sales != 0
+    else 0
+)
+
+total_transactions = filtered_df["transaction_id"].nunique()
+unique_customers = filtered_df["customer_id"].nunique()
+unique_products = filtered_df["product_id"].nunique()
+total_quantity = filtered_df["quantity_ordered"].sum()
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
 with kpi1:
     st.metric(
         "Total Sales",
-        format_number(kpi["total_sales"]),
+        format_number(total_sales),
     )
 
 with kpi2:
     st.metric(
         "Total Profit/Loss",
-        format_number(kpi["total_profit_loss"]),
+        format_number(total_profit),
     )
 
 with kpi3:
     st.metric(
         "Profit Margin",
-        f'{float(kpi["profit_margin_pct"]):.2f}%',
+        f"{profit_margin:.2f}%",
     )
 
 with kpi4:
     st.metric(
         "Transactions",
-        format_integer(kpi["total_transactions"]),
+        format_integer(total_transactions),
     )
-
 
 kpi5, kpi6, kpi7 = st.columns(3)
 
 with kpi5:
     st.metric(
         "Unique Customers",
-        format_integer(kpi["unique_customers"]),
+        format_integer(unique_customers),
     )
 
 with kpi6:
     st.metric(
         "Unique Products",
-        format_integer(kpi["unique_products"]),
+        format_integer(unique_products),
     )
 
 with kpi7:
     st.metric(
         "Total Quantity",
-        format_integer(kpi["total_quantity"]),
+        format_integer(total_quantity),
     )
 
 st.caption(
-    f'Period: {kpi["first_order_date"]} '
-    f'to {kpi["last_order_date"]}'
+    f"Filtered Period: "
+    f"{filtered_df['order_date'].min().date()} "
+    f"to {filtered_df['order_date'].max().date()}"
 )
 
 st.caption(
@@ -289,59 +495,73 @@ st.caption(
     "currency unit, which has not yet been independently confirmed."
 )
 
-
 # ==================================================
-# 8. MONTHLY SALES TREND
+# 10. MONTHLY SALES TREND
 # ==================================================
 
 st.divider()
 st.subheader("Monthly Sales Performance")
 
-if not monthly_df.empty:
+monthly_summary = (
+    filtered_df
+    .groupby("month_start", as_index=False)
+    .agg(
+        total_sales=("sales", "sum"),
+        total_profit_loss=("total_profit_loss", "sum"),
+    )
+    .sort_values("month_start")
+)
 
-    monthly_chart = monthly_df.copy()
+monthly_chart = (
+    monthly_summary
+    .set_index("month_start")
+    .asfreq("MS", fill_value=0)
+)
 
-    monthly_chart["month_start"] = pd.to_datetime(
-        monthly_chart["month_start"]
+chart_col1, chart_col2 = st.columns(2)
+
+with chart_col1:
+
+    st.markdown("**Monthly Sales Trend**")
+
+    st.line_chart(
+        monthly_chart[["total_sales"]]
     )
 
-    monthly_chart = (
-        monthly_chart
-        .set_index("month_start")
-        .asfreq("MS", fill_value=0)
+with chart_col2:
+
+    st.markdown("**Monthly Profit/Loss Trend**")
+
+    st.line_chart(
+        monthly_chart[["total_profit_loss"]]
     )
 
-    chart_col1, chart_col2 = st.columns(2)
-
-    with chart_col1:
-
-        st.markdown("**Monthly Sales Trend**")
-
-        st.line_chart(
-            monthly_chart[["total_sales"]]
-        )
-
-    with chart_col2:
-
-        st.markdown("**Monthly Profit/Loss Trend**")
-
-        st.line_chart(
-            monthly_chart[["total_profit_loss"]]
-        )
-
-    st.caption(
-        "Months without transactions are displayed as zero. "
-        "November 2025 has no transaction records in the source dataset."
-    )
-
-
+st.caption(
+    "Months without transactions within the selected period "
+    "are displayed as zero."
+)
 
 # ==================================================
-# 9. PRODUCT PERFORMANCE
+# 11. PRODUCT PERFORMANCE
 # ==================================================
 
 st.divider()
 st.subheader("Product Performance")
+
+products_df = (
+    filtered_df
+    .groupby(
+        ["product_code", "product_category"],
+        as_index=False,
+    )
+    .agg(
+        total_transactions=("transaction_id", "nunique"),
+        total_quantity=("quantity_ordered", "sum"),
+        total_sales=("sales", "sum"),
+        total_profit_loss=("total_profit_loss", "sum"),
+    )
+    .sort_values("total_sales", ascending=False)
+)
 
 product_col1, product_col2 = st.columns([1.2, 1])
 
@@ -357,41 +577,37 @@ with product_col1:
 
     product_chart = px.bar(
         top_products,
-        x="product_code",
-        y="total_sales",
+        x="total_sales",
+        y="product_code",
+        orientation="h",
         labels={
             "product_code": "Product Code",
-            "total_sales": "Total Sales"
-        }
-    )
-
-    product_chart.update_xaxes(
-        tickangle=-45,
-        automargin=True,
-        tickfont=dict(size=10)
+            "total_sales": "Total Sales",
+        },
     )
 
     product_chart.update_layout(
         height=420,
-        margin=dict(l=10, r=10, t=20, b=100)
+        margin=dict(l=10, r=10, t=20, b=40),
     )
 
     st.plotly_chart(
-        product_chart,
-        use_container_width=True
+         product_chart,
+    width="stretch",
+    key="product_sales_chart",
     )
-
 
 with product_col2:
 
     st.markdown("**Product Category Summary**")
 
     category_summary = (
-        products_df
+        filtered_df
         .groupby("product_category", as_index=False)
         .agg(
-            total_products=("product_code", "nunique"),
-            total_sales=("total_sales", "sum"),
+            total_products=("product_id", "nunique"),
+            total_transactions=("transaction_id", "nunique"),
+            total_sales=("sales", "sum"),
             total_profit=("total_profit_loss", "sum"),
         )
         .sort_values("total_sales", ascending=False)
@@ -403,7 +619,6 @@ with product_col2:
         hide_index=True,
     )
 
-
 with st.expander("View Top 10 Product Details"):
 
     st.dataframe(
@@ -412,6 +627,80 @@ with st.expander("View Top 10 Product Details"):
         hide_index=True,
     )
 
+
+# ==================================================
+# 12. CUSTOMER PERFORMANCE
+# ==================================================
+
+st.divider()
+st.subheader("Customer Performance")
+
+customers_df = (
+    filtered_df
+    .groupby(
+        ["customer_id", "customer_name", "country"],
+        as_index=False,
+    )
+    .agg(
+        total_transactions=("transaction_id", "nunique"),
+        total_quantity=("quantity_ordered", "sum"),
+        total_sales=("sales", "sum"),
+        total_profit_loss=("total_profit_loss", "sum"),
+    )
+    .sort_values("total_sales", ascending=False)
+)
+
+customer_col1, customer_col2 = st.columns(2)
+
+with customer_col1:
+
+    st.markdown("**Top 10 Customers by Sales**")
+
+    top_customers = (
+        customers_df
+        .head(10)
+        .sort_values("total_sales", ascending=True)
+    )
+
+    customer_chart = px.bar(
+        top_customers,
+        x="total_sales",
+        y="customer_name",
+        orientation="h",
+        labels={
+            "customer_name": "Customer Name",
+            "total_sales": "Total Sales",
+        },
+    )
+
+    customer_chart.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, t=20, b=40),
+    )
+
+    st.plotly_chart(
+         customer_chart,
+    width="stretch",
+    key="customer_sales_chart",
+    )
+
+with customer_col2:
+
+    st.markdown("**Customer Performance Details**")
+
+    st.dataframe(
+        customers_df[
+            [
+                "customer_name",
+                "country",
+                "total_transactions",
+                "total_sales",
+                "total_profit_loss",
+            ]
+        ].head(10),
+        width="stretch",
+        hide_index=True,
+    )
 
 # ==================================================
 # 10. CUSTOMER PERFORMANCE
@@ -455,7 +744,7 @@ with customer_col1:
 
     st.plotly_chart(
         customer_chart,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -478,12 +767,26 @@ with customer_col2:
     )
 
 
+
 # ==================================================
-# 11. GEOGRAPHIC SALES PERFORMANCE
+# 13. GEOGRAPHIC SALES PERFORMANCE
 # ==================================================
 
 st.divider()
 st.subheader("Geographic Sales Performance")
+
+geography_df = (
+    filtered_df
+    .groupby("country", as_index=False)
+    .agg(
+        total_cities=("city", "nunique"),
+        total_customers=("customer_id", "nunique"),
+        total_transactions=("transaction_id", "nunique"),
+        total_sales=("sales", "sum"),
+        total_profit_loss=("total_profit_loss", "sum"),
+    )
+    .sort_values("total_sales", ascending=False)
+)
 
 geo_col1, geo_col2 = st.columns(2)
 
@@ -499,30 +802,25 @@ with geo_col1:
 
     country_chart = px.bar(
         top_countries,
-        x="country",
-        y="total_sales",
+        x="total_sales",
+        y="country",
+        orientation="h",
         labels={
             "country": "Country",
             "total_sales": "Total Sales",
         },
     )
 
-    country_chart.update_xaxes(
-        tickangle=-45,
-        automargin=True,
-        tickfont=dict(size=10)
-    )
-
     country_chart.update_layout(
         height=420,
-        margin=dict(l=10, r=10, t=20, b=100)
+        margin=dict(l=10, r=10, t=20, b=40),
     )
 
     st.plotly_chart(
-        country_chart,
-        use_container_width=True,
+            country_chart,
+    width="stretch",
+    key="country_sales_chart",
     )
-
 
 with geo_col2:
 
@@ -537,14 +835,98 @@ with geo_col2:
                 "total_transactions",
                 "total_sales",
             ]
-        ] if "total_customers" in geography_df.columns
-        else geography_df[
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+
+
+# ==================================================
+# 14. DEAL SIZE PERFORMANCE
+# ==================================================
+
+st.divider()
+st.subheader("Deal Size Performance")
+
+deal_size_df = (
+    filtered_df
+    .groupby("deal_size", as_index=False)
+    .agg(
+        total_transactions=("transaction_id", "nunique"),
+        total_sales=("sales", "sum"),
+        total_profit_loss=("total_profit_loss", "sum"),
+    )
+)
+
+deal_size_order = ["Large", "Medium", "Small"]
+
+deal_size_df["deal_size"] = pd.Categorical(
+    deal_size_df["deal_size"],
+    categories=deal_size_order,
+    ordered=True,
+)
+
+deal_size_df = deal_size_df.sort_values("deal_size")
+
+deal_size_df["profit_margin_pct"] = (
+    deal_size_df["total_profit_loss"]
+    .div(deal_size_df["total_sales"].replace(0, pd.NA))
+    .mul(100)
+    .fillna(0)
+)
+
+deal_size_df["sales_contribution_pct"] = (
+    deal_size_df["total_sales"]
+    .div(total_sales if total_sales != 0 else 1)
+    .mul(100)
+)
+
+deal_size_col1, deal_size_col2 = st.columns(2)
+
+with deal_size_col1:
+
+    st.markdown("**Sales Contribution by Deal Size**")
+
+    deal_chart = px.bar(
+        deal_size_df,
+        x="deal_size",
+        y="total_sales",
+        labels={
+            "deal_size": "Deal Size",
+            "total_sales": "Total Sales",
+        },
+    )
+
+    deal_chart.update_xaxes(
+        tickangle=-45,
+        automargin=True,
+        tickfont=dict(size=10),
+    )
+
+    deal_chart.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, t=20, b=100),
+    )
+
+    st.plotly_chart(
+         deal_chart,
+    width="stretch",
+    key="deal_size_sales_chart",
+    )
+
+with deal_size_col2:
+
+    st.markdown("**Deal Size Details**")
+
+    st.dataframe(
+        deal_size_df[
             [
-                "country",
-                "total_cities",
-                "unique_customers",
+                "deal_size",
                 "total_transactions",
                 "total_sales",
+                "total_profit_loss",
+                "profit_margin_pct",
+                "sales_contribution_pct",
             ]
         ],
         width="stretch",
@@ -588,7 +970,7 @@ with deal_col1:
 
     st.plotly_chart(
         deal_chart,
-        use_container_width=True,
+        width="stretch",
     )
 
 
