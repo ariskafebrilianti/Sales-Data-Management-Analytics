@@ -103,7 +103,7 @@ with filter_col2:
 with filter_col3:
     search_text = st.text_input(
         "Search Transaction",
-        placeholder="Transaction code, customer, or product code",
+        placeholder="Transaction ID, reference, customer, or product code",
         type="search",
         key="history_search",
     )
@@ -145,10 +145,13 @@ count_sql = text("""
          OR t.deal_size = :deal_size_filter)
 
         AND (
-            :search_text = ''
-            OR t.source_transaction_code ILIKE :search_pattern
-            OR c.customer_name ILIKE :search_pattern
-            OR p.product_code ILIKE :search_pattern
+        :search_text = ''
+        OR t.transaction_id::TEXT = :search_text
+        OR t.source_transaction_code = :search_text
+        OR (
+        c.customer_name ILIKE :search_pattern
+        OR p.product_code ILIKE :search_pattern
+        )
         );
 """)
 
@@ -204,11 +207,14 @@ history_sql = text("""
          OR t.deal_size = :deal_size_filter)
 
         AND (
-            :search_text = ''
-            OR t.source_transaction_code ILIKE :search_pattern
-            OR c.customer_name ILIKE :search_pattern
-            OR p.product_code ILIKE :search_pattern
+        :search_text = ''
+        OR t.transaction_id::TEXT = :search_text
+        OR t.source_transaction_code = :search_text
+        OR (
+        c.customer_name ILIKE :search_pattern
+        OR p.product_code ILIKE :search_pattern
         )
+    )
 
     ORDER BY
         t.order_date DESC,

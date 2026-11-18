@@ -972,68 +972,8 @@ with deal_size_col2:
         hide_index=True,
     )
 
-
 # ==================================================
-# 12. DEAL SIZE PERFORMANCE
-# ==================================================
-
-st.divider()
-st.subheader("Deal Size Performance")
-
-deal_col1, deal_col2 = st.columns(2)
-
-with deal_col1:
-
-    st.markdown("**Sales Contribution by Deal Size**")
-
-    deal_chart = px.bar(
-        deal_size_df,
-        x="deal_size",
-        y="total_sales",
-        labels={
-            "deal_size": "Deal Size",
-            "total_sales": "Total Sales",
-        },
-    )
-
-    deal_chart.update_xaxes(
-        tickangle=-45,
-        automargin=True,
-        tickfont=dict(size=10)
-    )
-
-    deal_chart.update_layout(
-        height=420,
-        margin=dict(l=10, r=10, t=20, b=100)
-    )
-
-    st.plotly_chart(
-        deal_chart,
-        width="stretch",
-    )
-
-
-with deal_col2:
-
-    st.markdown("**Deal Size Details**")
-
-    st.dataframe(
-        deal_size_df[
-            [
-                "deal_size",
-                "total_transactions",
-                "total_sales",
-                "total_profit_loss",
-                "profit_margin_pct",
-                "sales_contribution_pct",
-            ]
-        ],
-        width="stretch",
-        hide_index=True,
-    )
-
-# ==================================================
-# 13. FOOTER
+# 15. FOOTER
 # ==================================================
 
 st.divider()
