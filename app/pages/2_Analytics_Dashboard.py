@@ -456,6 +456,7 @@ if filtered_df.empty:
     )
     st.stop()
 
+
 # ==================================================
 # 9. EXECUTIVE KPI CARDS
 # ==================================================
@@ -481,14 +482,14 @@ kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
 with kpi1:
     st.metric(
-        "Total Sales",
-        format_number(total_sales),
+        "Total Sales (USD*)",
+        f"${total_sales:,.2f}",
     )
 
 with kpi2:
     st.metric(
-        "Total Profit/Loss",
-        format_number(total_profit),
+        "Total Profit/Loss (USD*)",
+        f"${total_profit:,.2f}",
     )
 
 with kpi3:
@@ -530,8 +531,10 @@ st.caption(
 )
 
 st.caption(
-    "Financial values follow the source dataset's "
-    "currency unit, which has not yet been independently confirmed."
+    "*Financial values are displayed using USD ($) formatting "
+    "for presentation purposes only. The original dataset "
+    "does not explicitly specify its currency. "
+    "No currency conversion has been performed."
 )
 
 # ==================================================
@@ -555,6 +558,7 @@ monthly_chart = (
     monthly_summary
     .set_index("month_start")
     .asfreq("MS", fill_value=0)
+    .reset_index()
 )
 
 chart_col1, chart_col2 = st.columns(2)
@@ -563,22 +567,86 @@ with chart_col1:
 
     st.markdown("**Monthly Sales Trend**")
 
-    st.line_chart(
-        monthly_chart[["total_sales"]]
+    sales_chart = px.line(
+        monthly_chart,
+        x="month_start",
+        y="total_sales",
+        markers=True,
+        labels={
+            "month_start": "Month",
+            "total_sales": "Sales (USD*)",
+        },
     )
+
+    sales_chart.update_yaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    sales_chart.update_traces(
+        hovertemplate=(
+            "%{x|%B %Y}"
+            "<br>Sales: $%{y:,.2f}"
+            "<extra></extra>"
+        )
+    )
+
+    sales_chart.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, t=20, b=40),
+    )
+
+    st.plotly_chart(
+        sales_chart,
+        width="stretch",
+        key="monthly_sales_trend_chart",
+    )
+
 
 with chart_col2:
 
     st.markdown("**Monthly Profit/Loss Trend**")
 
-    st.line_chart(
-        monthly_chart[["total_profit_loss"]]
+    profit_chart = px.line(
+        monthly_chart,
+        x="month_start",
+        y="total_profit_loss",
+        markers=True,
+        labels={
+            "month_start": "Month",
+            "total_profit_loss": "Profit/Loss (USD*)",
+        },
+    )
+
+    profit_chart.update_yaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    profit_chart.update_traces(
+        hovertemplate=(
+            "%{x|%B %Y}"
+            "<br>Profit/Loss: $%{y:,.2f}"
+            "<extra></extra>"
+        )
+    )
+
+    profit_chart.update_layout(
+        height=420,
+        margin=dict(l=10, r=10, t=20, b=40),
+    )
+
+    st.plotly_chart(
+        profit_chart,
+        width="stretch",
+        key="monthly_profit_trend_chart",
     )
 
 st.caption(
     "Months without transactions within the selected period "
     "are displayed as zero."
 )
+
 
 # ==================================================
 # 11. PRODUCT PERFORMANCE
@@ -621,8 +689,21 @@ with product_col1:
         orientation="h",
         labels={
             "product_code": "Product Code",
-            "total_sales": "Total Sales",
+            "total_sales": "Total Sales (USD*)",
         },
+    )
+
+    product_chart.update_xaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    product_chart.update_traces(
+        hovertemplate=(
+            "Product Code: %{y}"
+            "<br>Total Sales: $%{x:,.2f}"
+            "<extra></extra>"
+        )
     )
 
     product_chart.update_layout(
@@ -631,9 +712,9 @@ with product_col1:
     )
 
     st.plotly_chart(
-         product_chart,
-    width="stretch",
-    key="product_sales_chart",
+        product_chart,
+        width="stretch",
+        key="product_sales_chart",
     )
 
 with product_col2:
@@ -654,6 +735,27 @@ with product_col2:
 
     st.dataframe(
         category_summary,
+        column_config={
+            "product_category": st.column_config.TextColumn(
+                "Product Category",
+            ),
+            "total_products": st.column_config.NumberColumn(
+                "Total Products",
+                format="%d",
+            ),
+            "total_transactions": st.column_config.NumberColumn(
+                "Total Transactions",
+                format="%d",
+            ),
+            "total_sales": st.column_config.NumberColumn(
+                "Total Sales (USD*)",
+                format="dollar",
+            ),
+            "total_profit": st.column_config.NumberColumn(
+                "Total Profit (USD*)",
+                format="dollar",
+            ),
+        },
         width="stretch",
         hide_index=True,
     )
@@ -662,6 +764,30 @@ with st.expander("View Top 10 Product Details"):
 
     st.dataframe(
         products_df.head(10),
+        column_config={
+            "product_code": st.column_config.TextColumn(
+                "Product Code",
+            ),
+            "product_category": st.column_config.TextColumn(
+                "Product Category",
+            ),
+            "total_transactions": st.column_config.NumberColumn(
+                "Total Transactions",
+                format="%d",
+            ),
+            "total_quantity": st.column_config.NumberColumn(
+                "Total Quantity",
+                format="%d",
+            ),
+            "total_sales": st.column_config.NumberColumn(
+                "Total Sales (USD*)",
+                format="dollar",
+            ),
+            "total_profit_loss": st.column_config.NumberColumn(
+                "Total Profit/Loss (USD*)",
+                format="dollar",
+            ),
+        },
         width="stretch",
         hide_index=True,
     )
@@ -708,8 +834,21 @@ with customer_col1:
         orientation="h",
         labels={
             "customer_name": "Customer Name",
-            "total_sales": "Total Sales",
+            "total_sales": "Total Sales (USD*)",
         },
+    )
+
+    customer_chart.update_xaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    customer_chart.update_traces(
+        hovertemplate=(
+            "Customer: %{y}"
+            "<br>Total Sales: $%{x:,.2f}"
+            "<extra></extra>"
+        )
     )
 
     customer_chart.update_layout(
@@ -718,74 +857,10 @@ with customer_col1:
     )
 
     st.plotly_chart(
-         customer_chart,
-    width="stretch",
-    key="customer_sales_chart",
-    )
-
-with customer_col2:
-
-    st.markdown("**Customer Performance Details**")
-
-    st.dataframe(
-        customers_df[
-            [
-                "customer_name",
-                "country",
-                "total_transactions",
-                "total_sales",
-                "total_profit_loss",
-            ]
-        ].head(10),
-        width="stretch",
-        hide_index=True,
-    )
-
-# ==================================================
-# 10. CUSTOMER PERFORMANCE
-# ==================================================
-
-st.divider()
-st.subheader("Customer Performance")
-
-customer_col1, customer_col2 = st.columns(2)
-
-with customer_col1:
-
-    st.markdown("**Top 10 Customers by Sales**")
-
-    top_customers = (
-        customers_df
-        .head(10)
-        .sort_values("total_sales", ascending=True)
-    )
-
-    customer_chart = px.bar(
-        top_customers,
-        x="customer_name",
-        y="total_sales",
-        labels={
-            "customer_name": "Customer Name",
-            "total_sales": "Total Sales",
-        },
-    )
-
-    customer_chart.update_xaxes(
-        tickangle=-45,
-        automargin=True,
-        tickfont=dict(size=10)
-    )
-
-    customer_chart.update_layout(
-        height=420,
-        margin=dict(l=10, r=10, t=20, b=100)
-    )
-
-    st.plotly_chart(
         customer_chart,
         width="stretch",
+        key="customer_sales_chart",
     )
-
 
 with customer_col2:
 
@@ -801,10 +876,29 @@ with customer_col2:
                 "total_profit_loss",
             ]
         ].head(10),
+        column_config={
+            "customer_name": st.column_config.TextColumn(
+                "Customer Name",
+            ),
+            "country": st.column_config.TextColumn(
+                "Country",
+            ),
+            "total_transactions": st.column_config.NumberColumn(
+                "Total Transactions",
+                format="%d",
+            ),
+            "total_sales": st.column_config.NumberColumn(
+                "Total Sales (USD*)",
+                format="dollar",
+            ),
+            "total_profit_loss": st.column_config.NumberColumn(
+                "Total Profit/Loss (USD*)",
+                format="dollar",
+            ),
+        },
         width="stretch",
         hide_index=True,
     )
-
 
 
 # ==================================================
@@ -846,8 +940,21 @@ with geo_col1:
         orientation="h",
         labels={
             "country": "Country",
-            "total_sales": "Total Sales",
+            "total_sales": "Total Sales (USD*)",
         },
+    )
+
+    country_chart.update_xaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    country_chart.update_traces(
+        hovertemplate=(
+            "Country: %{y}"
+            "<br>Total Sales: $%{x:,.2f}"
+            "<extra></extra>"
+        )
     )
 
     country_chart.update_layout(
@@ -856,9 +963,9 @@ with geo_col1:
     )
 
     st.plotly_chart(
-            country_chart,
-    width="stretch",
-    key="country_sales_chart",
+        country_chart,
+        width="stretch",
+        key="country_sales_chart",
     )
 
 with geo_col2:
@@ -875,6 +982,27 @@ with geo_col2:
                 "total_sales",
             ]
         ],
+        column_config={
+            "country": st.column_config.TextColumn(
+                "Country",
+            ),
+            "total_cities": st.column_config.NumberColumn(
+                "Total Cities",
+                format="%d",
+            ),
+            "total_customers": st.column_config.NumberColumn(
+                "Total Customers",
+                format="%d",
+            ),
+            "total_transactions": st.column_config.NumberColumn(
+                "Total Transactions",
+                format="%d",
+            ),
+            "total_sales": st.column_config.NumberColumn(
+                "Total Sales (USD*)",
+                format="dollar",
+            ),
+        },
         width="stretch",
         hide_index=True,
     )
@@ -932,8 +1060,21 @@ with deal_size_col1:
         y="total_sales",
         labels={
             "deal_size": "Deal Size",
-            "total_sales": "Total Sales",
+            "total_sales": "Total Sales (USD*)",
         },
+    )
+
+    deal_chart.update_yaxes(
+        tickprefix="$",
+        tickformat=",.2f",
+    )
+
+    deal_chart.update_traces(
+        hovertemplate=(
+            "Deal Size: %{x}"
+            "<br>Total Sales: $%{y:,.2f}"
+            "<extra></extra>"
+        )
     )
 
     deal_chart.update_xaxes(
@@ -948,9 +1089,9 @@ with deal_size_col1:
     )
 
     st.plotly_chart(
-         deal_chart,
-    width="stretch",
-    key="deal_size_sales_chart",
+        deal_chart,
+        width="stretch",
+        key="deal_size_sales_chart",
     )
 
 with deal_size_col2:
@@ -968,9 +1109,35 @@ with deal_size_col2:
                 "sales_contribution_pct",
             ]
         ],
+        column_config={
+            "deal_size": st.column_config.TextColumn(
+                "Deal Size",
+            ),
+            "total_transactions": st.column_config.NumberColumn(
+                "Total Transactions",
+                format="%d",
+            ),
+            "total_sales": st.column_config.NumberColumn(
+                "Total Sales (USD*)",
+                format="dollar",
+            ),
+            "total_profit_loss": st.column_config.NumberColumn(
+                "Total Profit/Loss (USD*)",
+                format="dollar",
+            ),
+            "profit_margin_pct": st.column_config.NumberColumn(
+                "Profit Margin (%)",
+                format="%.2f%%",
+            ),
+            "sales_contribution_pct": st.column_config.NumberColumn(
+                "Sales Contribution (%)",
+                format="%.2f%%",
+            ),
+        },
         width="stretch",
         hide_index=True,
     )
+
 
 # ==================================================
 # 15. FOOTER

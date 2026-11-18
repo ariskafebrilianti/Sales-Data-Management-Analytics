@@ -224,6 +224,7 @@ history_sql = text("""
 """)
 
 
+
 # ==================================================
 # 8. DISPLAY TRANSACTION HISTORY
 # ==================================================
@@ -276,6 +277,20 @@ try:
 
         st.dataframe(
             history_rows,
+            column_config={
+                "Selling Price": st.column_config.NumberColumn(
+                    "Selling Price (USD*)",
+                    format="dollar",
+                ),
+                "Sales": st.column_config.NumberColumn(
+                    "Sales (USD*)",
+                    format="dollar",
+                ),
+                "Profit/Loss": st.column_config.NumberColumn(
+                    "Profit/Loss (USD*)",
+                    format="dollar",
+                ),
+            },
             width="stretch",
             hide_index=True,
         )
