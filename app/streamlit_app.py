@@ -396,11 +396,20 @@ if save_clicked:
             "Please confirm the transaction details before saving."
         )
 
-    elif not deal_size:
-        st.error("Please select a deal size.")
+    elif quantity < 1:
+        st.error(
+            "Quantity must be at least 1."
+        )
 
     elif selling_price <= 0:
-        st.error("Selling price must be greater than zero.")
+        st.error(
+            "Selling price must be greater than zero."
+        )
+
+    elif not deal_size:
+        st.error(
+            "Please select a deal size."
+        )
 
     else:
         selected_customer = customer_options[customer_label]

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS transactions (
         CHECK (estimated_cost_per_unit >= 0),
 
     CONSTRAINT chk_selling_price
-        CHECK (selling_price >= 0),
+        CHECK (selling_price > 0),
 
     CONSTRAINT chk_sales
         CHECK (sales >= 0),
