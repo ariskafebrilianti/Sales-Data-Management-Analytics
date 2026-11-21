@@ -64,6 +64,16 @@ Built with Streamlit and Plotly, including:
 
 Dashboard data is cached for up to five minutes and can be refreshed manually.
 
+### 7. Synthetic Data Generation & Automated Testing
+
+- Generates synthetic sales transactions using Faker.
+- Creates synthetic customer and product reference data.
+- Applies business rules for quantity, pricing, estimated cost, sales, and profitability.
+- Exports generated transactions to a local CSV file.
+- Uses Python unittest to validate data structure, completeness, uniqueness, referential consistency, and financial calculations.
+- Runs automated tests through GitHub Actions on pushes and pull requests to the main branch.
+- Keeps synthetic datasets separate from production database records.
+
 ## Dataset
 
 | Attribute            | Description                  |
@@ -93,7 +103,9 @@ The source file contains one summary row in addition to the transaction records.
 | Total Profit/Loss  | 3,293,041.70 |
 | Profit Margin      |       39.71% |
 
-**Note:** The source currency unit has not been independently confirmed. Financial values are therefore presented without assuming a specific currency.
+**Currency Disclaimer:** The original dataset does not explicitly identify its currency. Dashboard financial values are displayed using USD ($) formatting for presentation purposes only. No currency conversion or independent currency verification has been performed.
+
+**Data Scope:** The summary above describes the original 2,823 source transactions only. It excludes manually entered transactions and Faker-generated synthetic test data.
 
 ## Important Data Assumptions
 
@@ -126,6 +138,9 @@ The project uses six SQL views to support dashboard reporting:
 | Application     | Streamlit             |
 | Visualization   | Plotly                |
 | Version Control | Git, GitHub           |
+| Synthetic Data  | Faker                 |
+| Testing         | Python unittest       |
+| CI Automation   | GitHub Actions        |
 
 ## Project Structure
 
@@ -134,6 +149,7 @@ Sales-Data-Management-Analytics/
 │
 ├── .github/
 │   └── workflows/
+│       └── synthetic-data-tests.yml
 │
 ├── app/
 │   ├── pages/
@@ -144,25 +160,35 @@ Sales-Data-Management-Analytics/
 ├── data/
 │   ├── raw/
 │   ├── processed/
-│   └── rejected/
+│   ├── rejected/
+│   └── synthetic/
 │
 ├── docs/
+│   ├── data_dictionary.md
+│   ├── data_quality_report.md
+│   └── erd.md
 │
 ├── notebooks/
 │
 ├── sql/
 │
 ├── src/
+│   ├── generate_synthetic_data.py
 │   ├── load_staging.py
-│   └── test_db_connection.py
+│   ├── test_db_connection.py
+│   └── test_reader_connection.py
 │
 ├── tests/
+│   └── test_synthetic_data.py
 │
+├── public_dashboard.py
 ├── requirements.txt
 └── README.md
 ```
 
-The raw source dataset and environment configuration are kept locally and are excluded from version control.
+The raw source dataset, generated datasets, and environment configuration are kept locally and excluded from version control.
+
+The `sql/` directory contains database schema, ETL, analytical views, verification queries, and database maintenance scripts.
 
 ## Getting Started
 
@@ -254,28 +280,98 @@ The application provides three pages:
 - Transaction History
 - Analytics Dashboard
 
+## Synthetic Data Generation
+
+The project uses Faker to generate synthetic sales transactions for local testing and data quality validation.
+
+Run the generator from the project root:
+
+```bash
+python src/generate_synthetic_data.py --rows 100 --seed 42
+```
+
+The generated CSV file is saved to:
+
+```text
+data/synthetic/synthetic_transactions.csv
+```
+
+The generator supports reproducible data generation through a configurable random seed and date range.
+
+Synthetic datasets are excluded from Git version control and are not automatically inserted into the production Supabase database.
+
 ## Testing & Validation
 
-Manual application testing has been performed to verify:
+### Manual Application Testing
 
-- Streamlit application startup and database connectivity.
-- Transaction form validation.
-- Successful transaction insertion.
-- Database calculation and data integrity.
-- Transaction History visibility and filtering.
-- QA transaction cleanup.
-- Dashboard refresh and KPI consistency.
+The Streamlit transaction management application was tested locally.
 
-The original transaction dataset was restored after QA testing.
+Validation scenarios included:
+
+- Rejecting transactions without confirmation.
+- Rejecting selling prices equal to zero.
+- Rejecting transactions without a selected deal size.
+- Successfully inserting valid transactions into PostgreSQL.
+- Verifying saved records in Supabase.
+- Confirming transaction visibility in Transaction History.
+- Verifying dashboard KPI updates after a successful transaction.
+
+### Automated Synthetic Data Testing
+
+The synthetic data generator is tested using Python's built-in `unittest` framework.
+
+Run the tests locally:
+
+\```bash
+python -m unittest discover -s tests -p "test\_\*.py" -v
+\```
+
+The automated test suite contains 13 test cases covering:
+
+- Transaction count and CSV column structure.
+- Missing values and unique transaction references.
+- Customer and product reference consistency.
+- Numeric and financial business rules.
+- Profit/Loss status and deal size validation.
+- Transaction date range validation.
+- Reproducible data generation.
+- CSV export.
+- Invalid generator parameters.
+
+### Continuous Integration
+
+GitHub Actions automatically runs the synthetic data tests when:
+
+- Code is pushed to the `main` branch.
+- A pull request targets the `main` branch.
+- The workflow is manually triggered.
+
+**Latest verified result:** 13 automated tests passed in GitHub Actions.
+
+The workflow does not require production database credentials or write synthetic records to Supabase.
 
 ## Project Status
 
-**Core implementation and manual application testing completed.**
+**Core implementation, transaction testing, synthetic data generation, and automated CI testing completed.**
 
-The project includes data profiling, a normalized PostgreSQL database, ETL processing, SQL analytical views, a Streamlit transaction management application, transaction history, and an interactive analytics dashboard.
+The project includes:
 
-Documentation and portfolio presentation are being finalized.
+- Data profiling and quality assessment.
+- Relational database design and PostgreSQL implementation.
+- ETL processing and source-to-target reconciliation.
+- SQL analytical views.
+- Streamlit transaction input and history.
+- Interactive analytics dashboard.
+- Faker-based synthetic data generation.
+- Automated testing with Python unittest.
+- GitHub Actions continuous integration.
+
+Final documentation and portfolio presentation are being completed.
 
 ## Disclaimer
 
 This is an educational portfolio project developed for data analytics and data management learning purposes. The estimated cost calculation is based on a 50% MSRP assumption and does not represent actual business cost data.
+
+```
+
+```
