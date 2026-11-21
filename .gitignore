@@ -31,3 +31,6 @@ data/rejected/*
 .env
 .env.*
 !.env.example
+# Synthetic datasets: keep locally, not on GitHub
+data/synthetic/*
+!data/synthetic/.gitkeep
