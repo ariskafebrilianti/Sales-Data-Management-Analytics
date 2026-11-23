@@ -1,0 +1,183 @@
+
+.reference-data {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.reference-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.reference-eyebrow {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.reference-intro h2 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: 23px;
+}
+
+.reference-intro p:not(.reference-eyebrow) {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.reference-demo-tag {
+  padding: 7px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.reference-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.reference-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.reference-summary-card span {
+  color: #667085;
+  font-size: 13px;
+}
+
+.reference-summary-card strong {
+  color: #172033;
+  font-size: 26px;
+}
+
+.reference-panel {
+  padding: 22px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.reference-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.reference-panel-heading h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 16px;
+}
+
+.reference-panel-heading p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.reference-panel-heading > span {
+  color: #667085;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reference-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.reference-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.reference-table th,
+.reference-table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #eaecf0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.reference-table th {
+  background: #f8fafc;
+  color: #475467;
+  font-weight: 700;
+}
+
+.reference-table td {
+  color: #344054;
+}
+
+.reference-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.reference-code {
+  color: #1d4ed8 !important;
+  font-weight: 600;
+}
+
+.deal-size-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.deal-size-item {
+  padding: 9px 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 7px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reference-disclaimer {
+  margin: -6px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+@media (max-width: 650px) {
+  .reference-intro {
+    flex-direction: column;
+  }
+
+  .reference-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
